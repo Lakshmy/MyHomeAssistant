@@ -146,47 +146,7 @@ az containerapp show --name app-memory-backend --resource-group rg-memory-assist
 
 ---
 
-## 5. Git push — "origin does not appear to be a git repository"
-
-**Symptom**  
-```
-fatal: 'origin' does not appear to be a git repository
-fatal: Could not read from remote repository.
-```
-
-**Root Cause**  
-The `git remote add origin` command was never run — no remote was configured.
-
-**Fix**  
-```powershell
-git remote add origin https://github.com/YOUR_USERNAME/MyHomeAssistant.git
-git push -u origin v1_gemini_flash
-```
-
----
-
-## 6. Git push — "repository not found"
-
-**Symptom**  
-```
-fatal: repository 'https://github.com/Lakshmy/MyHomeAssistant.git/' not found
-```
-
-**Root Cause**  
-The GitHub repository had not been created yet, or the username in the URL was incorrect.
-
-**Fix**  
-1. Create the repo at [github.com/new](https://github.com/new) — name it `MyHomeAssistant`, leave all checkboxes unchecked
-2. Copy the exact URL GitHub shows after creation
-3. Update the remote and push:
-```powershell
-git remote set-url origin https://github.com/CORRECT_USERNAME/MyHomeAssistant.git
-git push -u origin v1_gemini_flash
-```
-
----
-
-## 7. Videos.tsx — duplicate `export default function Videos()`
+## 5. Videos.tsx — duplicate `export default function Videos()`
 
 **Symptom**  
 VS Code `get_errors` reported two `export default function Videos()` declarations in the same file (lines 20 and 357). TypeScript compilation would fail.
@@ -206,7 +166,7 @@ Zero output = zero errors.
 
 ---
 
-## 8. Layout broken — content overflowing viewport
+## 6. Layout broken — content overflowing viewport
 
 **Symptom**  
 On mobile, the page scrolled past the screen edge. The chat button appeared off-screen or behind the browser toolbar.
