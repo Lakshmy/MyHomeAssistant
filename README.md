@@ -2,6 +2,8 @@
 
 A Progressive Web App (PWA) that helps elderly users locate household items using voice queries. Users upload walkthrough videos of their home; Google Gemini analyses the videos to build an inventory index of objects and locations. Users can then ask voice questions to find their belongings, and the app plays the relevant video clip alongside the answer.
 
+> **Troubleshooting**: See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for a guide to common errors and fixes encountered during development.
+
 ---
 
 ## Architecture
