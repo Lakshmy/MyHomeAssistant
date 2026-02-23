@@ -1,0 +1,63 @@
+# ──────────────────────────────────────────────
+# Python (backend)
+# ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+*.so
+.Python
+.venv/
+venv/
+env/
+.env
+
+# ──────────────────────────────────────────────
+# Node / Frontend
+# ──────────────────────────────────────────────
+node_modules/
+client/dist/
+client/dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ──────────────────────────────────────────────
+# Environment & secrets
+# ──────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# ──────────────────────────────────────────────
+# Azure / deployment
+# ──────────────────────────────────────────────
+.azure/
+*.bicepparam.local
+
+# ──────────────────────────────────────────────
+# Editors & OS
+# ──────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.sln
+*.sw?
+
+# ──────────────────────────────────────────────
+# Temp / scratch
+# ──────────────────────────────────────────────
+temp/
+*.tmp
