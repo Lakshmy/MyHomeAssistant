@@ -1,7 +1,9 @@
 fastapi
 uvicorn
 python-multipart
-google-genai
-pymongo
 azure-storage-blob
 azure-identity
+openai
+opencv-python-headless
+python-dotenv
+requests

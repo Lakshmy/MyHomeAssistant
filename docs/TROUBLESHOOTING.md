@@ -54,7 +54,9 @@ az role assignment create \
 
 ---
 
-## 2. Google Gemini 429 — Quota Exhausted
+## 2. Google Gemini 429 — Quota Exhausted *(v1 — Gemini era, now resolved)*
+
+> **Note**: The backend has since migrated from Google Gemini to **Azure OpenAI (GPT-5.2)** with **Azure AI Content Understanding** for transcription. This section is kept as a historical record of the v1 architecture.
 
 **Symptom**  
 All API calls return:  
@@ -89,7 +91,9 @@ Avoid multi-step Gemini calls (e.g. separate transcription + answer steps) durin
 
 ---
 
-## 3. AI not answering general knowledge questions
+## 3. AI not answering general knowledge questions *(v1 — Gemini era, now resolved)*
+
+> **Note**: This issue was specific to the Google Gemini multimodal pathway. The current v2 architecture (Azure AI Content Understanding for transcription + Azure OpenAI GPT-5.2 for chat) handles this differently — transcription and Q&A are separate steps by design, with explicit prompt rules controlling scope.
 
 **Symptom**  
 Asking "What is the capital of Finland?" returned:  

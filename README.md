@@ -1,6 +1,6 @@
 # Memory Assistant PWA
 
-A Progressive Web App (PWA) that helps elderly users locate household items using voice queries. Users upload walkthrough videos of their home; Google Gemini analyses the videos to build an inventory index of objects and locations. Users can then ask voice questions to find their belongings, and the app plays the relevant video clip alongside the answer.
+A Progressive Web App (PWA) that helps elderly users locate household items using voice queries. Users upload walkthrough videos of their home; Azure OpenAI (GPT-5.2) analyses extracted video frames to build an inventory index of objects and locations. Users can then ask voice questions — transcribed by Azure AI Content Understanding — to find their belongings, and the app plays the relevant video clip alongside the answer.
 
 > **Troubleshooting**: See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for a guide to common errors and fixes encountered during development.
 
@@ -16,13 +16,13 @@ A Progressive Web App (PWA) that helps elderly users locate household items usin
 
 | Component | Technology | Purpose |
 |---|---|---|
-| UI Framework | React 18 + TypeScript | Component-based SPA |
+| UI Framework | React 19 + TypeScript | Component-based SPA |
 | Build Tool | Vite | Fast dev build + production bundle |
 | PWA | vite-plugin-pwa + Workbox | Installable app, offline caching |
-| Routing | React Router v6 | Client-side navigation |
+| Routing | React Router v7 | Client-side navigation |
 | Home (`App.tsx`) | React | Nav hub, Admin Mode toggle (persisted in localStorage) |
 | Ask Question (`Chat.tsx`) | React | MediaRecorder API, voice recording, message display + video clip player |
-| Upload Videos (`Record.tsx`) | React | Multi-stage upload flow with Gemini analysis spinner |
+| Upload Videos (`Record.tsx`) | React | Multi-stage upload flow with AI analysis spinner |
 | My Videos (`Videos.tsx`) | React | Video list, inline player, per-video inventory index editor |
 | Web Speech API | Browser native | Text-to-speech readback of assistant answers |
 | Container | nginx:alpine | Serves the static Vite build |
@@ -34,9 +34,13 @@ A Progressive Web App (PWA) that helps elderly users locate household items usin
 | Component | Technology | Purpose |
 |---|---|---|
 | API Framework | FastAPI (Python 3.11) | REST API, async request handling |
-| AI | Google Gemini (`gemini-flash-lite-latest`) | Audio transcription + inventory Q&A; video item extraction |
+| AI — Chat | Azure OpenAI (`gpt-5.2` deployment) | Inventory Q&A (text prompt + context) |
+| AI — Transcription | Azure AI Content Understanding (`prebuilt-audioAnalyzer`) | Audio → text transcription |
+| AI — Video Analysis | Azure OpenAI (`gpt-5.2` deployment) | Video frame extraction → item inventory |
+| Frame Extraction | OpenCV (`opencv-python-headless`) | Extracts evenly-spaced JPEG frames from uploaded videos |
 | Storage SDK | `azure-storage-blob` | Upload, list, stream, delete blobs |
-| Auth | `azure-identity` — `ManagedIdentityCredential` | Passwordless auth to Azure Storage (no connection strings) |
+| OpenAI SDK | `openai` (Azure variant) | Keyless chat completions via Managed Identity |
+| Auth | `azure-identity` — `DefaultAzureCredential` | Managed Identity in production, `az login` for local dev |
 | RBAC Role | Storage Blob Data Contributor | Grants backend read/write on the blob container |
 | Blob: Video | `{uuid}_{filename}` | Raw uploaded video file |
 | Blob: Index | `{uuid}_{filename}.index.json` | AI-extracted item inventory (object, location, room, notes) |
@@ -49,8 +53,8 @@ A Progressive Web App (PWA) that helps elderly users locate household items usin
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/chat-audio` | Accepts audio file; transcribes with Gemini; looks up inventory; returns answer + matched video name |
-| `POST` | `/analyze-video` | Uploads video to blob storage; runs Gemini analysis; saves `.index.json` companion blob |
+| `POST` | `/chat-audio` | Accepts audio file; transcribes with Azure AI Content Understanding; queries GPT-5.2 with inventory context; returns answer + matched video name |
+| `POST` | `/analyze-video` | Uploads video to blob storage; extracts frames with OpenCV; runs GPT-5.2 analysis; saves `.index.json` companion blob |
 | `GET` | `/videos` | Lists all videos with size, last modified, and `has_index` flag |
 | `GET` | `/videos/{name}/stream` | HTTP range-aware video streaming from blob storage |
 | `GET` | `/videos/{name}/index` | Returns the inventory index JSON for a specific video |
@@ -67,7 +71,7 @@ A Progressive Web App (PWA) that helps elderly users locate household items usin
 | Blob Container | `user-videos` |
 | Frontend App | `<your-frontend-app>` |
 | Backend App | `<your-backend-app>` |
-| Region | East US |
+| Region | Sweden Central |
 
 ---
 
@@ -77,19 +81,19 @@ Three PowerShell scripts are provided:
 
 | Script | Purpose |
 |---|---|
-| `deploy.ps1` | Full deploy — builds and deploys both frontend and backend |
-| `deploy_frontend.ps1` | Frontend only |
-| `deploy_backend.ps1` | Backend only |
+| `deploy_v2.ps1` | Full deploy — builds and deploys both frontend and backend |
+| `deploy_frontend_v2.ps1` | Frontend only |
+| `deploy_backend_v2.ps1` | Backend only |
 
 ```powershell
 # Full deploy
-./deploy.ps1
+./deploy_v2.ps1
 
 # Frontend only (e.g. after UI changes)
-./deploy_frontend.ps1
+./deploy_frontend_v2.ps1
 
 # Backend only (e.g. after API changes)
-./deploy_backend.ps1
+./deploy_backend_v2.ps1
 ```
 
 **Prerequisites**: Azure CLI logged in (`az login`) with access to `<your-resource-group>`.
@@ -98,23 +102,33 @@ Three PowerShell scripts are provided:
 
 ## Configuration
 
-### Google Gemini API Key
+### Azure OpenAI
 
-1. Get your API key from [Google AI Studio](https://aistudio.google.com/).
-2. Set it on the backend Container App:
+The backend uses **Azure OpenAI** via Managed Identity (keyless). Set the following environment variables on the backend Container App:
+
+| Variable | Description |
+|---|---|
+| `AZURE_OPENAI_ENDPOINT` | Your Azure AI Foundry endpoint (e.g. `https://<resource>.services.ai.azure.com`) |
+| `AZURE_OPENAI_DEPLOYMENT` | Deployment name (defaults to `gpt-5.2`) |
+| `AZURE_STORAGE_ACCOUNT_URL` | Blob storage URL (e.g. `https://<account>.blob.core.windows.net`) |
 
 ```powershell
 az containerapp update `
   --name <your-backend-app> `
   --resource-group <your-resource-group> `
-  --set-env-vars GOOGLE_API_KEY=YOUR_KEY_HERE
+  --set-env-vars `
+    AZURE_OPENAI_ENDPOINT=https://<your-resource>.services.ai.azure.com `
+    AZURE_OPENAI_DEPLOYMENT=gpt-5.2 `
+    AZURE_STORAGE_ACCOUNT_URL=https://<your-storage>.blob.core.windows.net
 ```
 
-> **Note**: The free tier of the Gemini API has a limit of ~20 requests/day. Enable billing in Google AI Studio for production use.
+The backend's System-Assigned Managed Identity needs the **Cognitive Services OpenAI User** role on the Azure AI Foundry resource and the **Storage Blob Data Contributor** role on the storage account.
+
+> **Note**: Audio transcription uses Azure AI Content Understanding (`prebuilt-audioAnalyzer`), which is accessed via the same Azure AI endpoint.
 
 ### Azure Storage Access
 
-The backend uses **Managed Identity** — no connection strings required. Ensure the backend's System-Assigned identity has the **Storage Blob Data Contributor** role on the storage account, and that `publicNetworkAccess` is **Enabled** on the storage account.
+The backend uses **DefaultAzureCredential** — no connection strings required. This uses Managed Identity in production and `az login` for local development. Ensure the backend's System-Assigned identity has the **Storage Blob Data Contributor** role on the storage account, and that `publicNetworkAccess` is **Enabled** on the storage account.
 
 ---
 

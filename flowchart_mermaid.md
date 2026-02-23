@@ -37,9 +37,9 @@ flowchart TB
         RBAC["RBAC: Storage Blob Data Contributor"]
     end
 
-    subgraph Gemini["Google Gemini API"]
-        G1["gemini-flash-lite-latest\nAudio Q&A + Inventory lookup"]
-        G2["gemini-flash-lite-latest\nVideo analysis → item extraction"]
+    subgraph AzureAI["Azure AI Services"]
+        CU["Azure AI Content Understanding\nprebuilt-audioAnalyzer\nAudio → text transcription"]
+        GPT["Azure OpenAI — GPT-5.2\nInventory Q&A + Video frame analysis"]
     end
 
     User -->|HTTPS| ACA_Frontend
@@ -47,9 +47,9 @@ flowchart TB
     ACR --> ACA_Frontend & ACA_Backend
     ACA_Backend -->|Managed Identity auth| ManagedID
     ManagedID --> Storage
-    EP1 -->|Audio + inventory prompt| G1
-    EP2 -->|Video frames| G2
-    G2 -->|Extracted items JSON| BLOB_IDX
+    EP1 -->|Transcribed text + inventory prompt| GPT
+    EP1 -->|Audio file| CU
+    EP2 -->|Video frames (OpenCV)| GPT
     EP4 -->|Range streaming| BLOB_VID
     EP2 -->|Upload| BLOB_VID
 ```

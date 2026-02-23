@@ -46,6 +46,9 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
 resource backendApp 'Microsoft.App/containerApps@2022-11-01-preview' = {
   name: backendAppName
   location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     managedEnvironmentId: env.id
     configuration: {
@@ -80,7 +83,7 @@ resource backendApp 'Microsoft.App/containerApps@2022-11-01-preview' = {
         }
       ]
       scale: {
-        minReplicas: 0
+        minReplicas: 1
         maxReplicas: 10
       }
     }
@@ -135,3 +138,4 @@ resource frontendApp 'Microsoft.App/containerApps@2022-11-01-preview' = {
 output acrLoginServer string = acr.properties.loginServer
 output backendUrl string = backendApp.properties.configuration.ingress.fqdn
 output frontendUrl string = frontendApp.properties.configuration.ingress.fqdn
+output backendPrincipalId string = backendApp.identity.principalId
