@@ -27,7 +27,7 @@ A Progressive Web App (PWA) that helps elderly users locate household items usin
 | Web Speech API | Browser native | Text-to-speech readback of assistant answers |
 | Container | nginx:alpine | Serves the static Vite build |
 | Registry | Azure Container Registry | Stores `memory-frontend:latest` image |
-| Hosting | Azure Container Apps | `app-memory-frontend` |
+| Hosting | Azure Container Apps | `<your-frontend-app>` |
 
 ### Backend Components
 
@@ -43,7 +43,7 @@ A Progressive Web App (PWA) that helps elderly users locate household items usin
 | Video Streaming | HTTP Range requests (`206 Partial Content`) | Efficient in-browser video playback |
 | Container | Python 3.11 slim | Runtime image |
 | Registry | Azure Container Registry | Stores `memory-backend:latest` image |
-| Hosting | Azure Container Apps | `app-memory-backend` with System-Assigned Managed Identity |
+| Hosting | Azure Container Apps | `<your-backend-app>` with System-Assigned Managed Identity |
 
 ### Backend API Endpoints
 
@@ -61,12 +61,12 @@ A Progressive Web App (PWA) that helps elderly users locate household items usin
 
 | Resource | Name |
 |---|---|
-| Resource Group | `rg-memory-assistant` |
-| Container Registry | `acrjz2jhmcdr5d34` |
-| Storage Account | `stmemjz2jh` |
+| Resource Group | `<your-resource-group>` |
+| Container Registry | `<your-acr-name>` |
+| Storage Account | `<your-storage-account>` |
 | Blob Container | `user-videos` |
-| Frontend App | `app-memory-frontend` |
-| Backend App | `app-memory-backend` |
+| Frontend App | `<your-frontend-app>` |
+| Backend App | `<your-backend-app>` |
 | Region | East US |
 
 ---
@@ -92,7 +92,7 @@ Three PowerShell scripts are provided:
 ./deploy_backend.ps1
 ```
 
-**Prerequisites**: Azure CLI logged in (`az login`) with access to `rg-memory-assistant`.
+**Prerequisites**: Azure CLI logged in (`az login`) with access to `<your-resource-group>`.
 
 ---
 
@@ -105,8 +105,8 @@ Three PowerShell scripts are provided:
 
 ```powershell
 az containerapp update `
-  --name app-memory-backend `
-  --resource-group rg-memory-assistant `
+  --name <your-backend-app> `
+  --resource-group <your-resource-group> `
   --set-env-vars GOOGLE_API_KEY=YOUR_KEY_HERE
 ```
 

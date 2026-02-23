@@ -27,8 +27,8 @@ Azure Container Apps are **not** in the Azure Storage "trusted Azure services" b
 Re-enable public network access on the storage account:
 ```powershell
 az storage account update \
-  --name stmemjz2jh \
-  --resource-group rg-memory-assistant \
+  --name <your-storage-account> \
+  --resource-group <your-resource-group> \
   --public-network-access Enabled
 ```
 
@@ -38,10 +38,10 @@ Security is still enforced via Managed Identity + RBAC (`allowSharedKeyAccess` r
 If the Container App was re-created, its System-Assigned Managed Identity gets a new Principal ID. Verify it matches the role assignment:
 ```powershell
 # Get current backend identity
-az containerapp show --name app-memory-backend --resource-group rg-memory-assistant --query "identity.principalId" -o tsv
+az containerapp show --name <your-backend-app> --resource-group <your-resource-group> --query "identity.principalId" -o tsv
 
 # List role assignments on storage
-$storageId = az storage account show --name stmemjz2jh --resource-group rg-memory-assistant --query id -o tsv
+$storageId = az storage account show --name <your-storage-account> --resource-group <your-resource-group> --query id -o tsv
 az role assignment list --scope $storageId --output table
 ```
 If the Principal IDs don't match, reassign the role:
@@ -141,7 +141,7 @@ To suppress the warning, run this in PowerShell before the deploy:
 
 Or verify deployment via timestamp instead of terminal output:
 ```powershell
-az containerapp show --name app-memory-backend --resource-group rg-memory-assistant --query "systemData.lastModifiedAt" -o tsv
+az containerapp show --name <your-backend-app> --resource-group <your-resource-group> --query "systemData.lastModifiedAt" -o tsv
 ```
 
 ---
@@ -195,22 +195,22 @@ Moved the chat button into a `.chat-controls` flex footer div instead of `positi
 
 ### Check backend live logs
 ```powershell
-az containerapp logs show --name app-memory-backend --resource-group rg-memory-assistant --tail 50
+az containerapp logs show --name <your-backend-app> --resource-group <your-resource-group> --tail 50
 ```
 
 ### Check last deploy timestamp
 ```powershell
-az containerapp show --name app-memory-backend --resource-group rg-memory-assistant --query "systemData.lastModifiedAt" -o tsv
-az containerapp show --name app-memory-frontend --resource-group rg-memory-assistant --query "systemData.lastModifiedAt" -o tsv
+az containerapp show --name <your-backend-app> --resource-group <your-resource-group> --query "systemData.lastModifiedAt" -o tsv
+az containerapp show --name <your-frontend-app> --resource-group <your-resource-group> --query "systemData.lastModifiedAt" -o tsv
 ```
 
 ### Test backend endpoints directly
 ```powershell
 # Health check
-curl https://app-memory-backend.wittywater-f3319d1c.eastus.azurecontainerapps.io/
+curl https://<your-backend-url>.azurecontainerapps.io/
 
 # List videos
-curl https://app-memory-backend.wittywater-f3319d1c.eastus.azurecontainerapps.io/videos
+curl https://<your-backend-url>.azurecontainerapps.io/videos
 ```
 
 ### Force browser to reload after deploy
