@@ -54,6 +54,22 @@ if ($failed) {
     exit 1
 }
 
+# Check Azure storage account is reachable
+if (Test-Path "$PSScriptRoot\..\server\.env") {
+    $storageUrl = (Get-Content "$PSScriptRoot\..\server\.env" | Select-String "AZURE_STORAGE_ACCOUNT_URL=").ToString().Split("=",2)[1].Trim()
+    $storageName = ($storageUrl -replace "https://","" -replace "\.blob\.core\.windows\.net","")
+    $exists = az storage account show --name $storageName --query "name" -o tsv 2>$null
+    if (-not $exists) {
+        Write-Host ""
+        Write-Host "  !  Storage account '$storageName' not found." -ForegroundColor Yellow
+        Write-Host "     Run .\scripts\deploy_infra.ps1 to provision Azure infrastructure first." -ForegroundColor Yellow
+        $answer = Read-Host "     Continue anyway? (y/n)"
+        if ($answer -ne "y") { exit 1 }
+    } else {
+        Write-Host "  OK Storage account: $storageName" -ForegroundColor Green
+    }
+}
+
 # -- Install dependencies if needed ------------------------------------
 Write-Host ""
 if (-not (Test-Path "$PSScriptRoot\..\client\node_modules")) {
