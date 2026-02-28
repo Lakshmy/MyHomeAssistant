@@ -15,6 +15,7 @@ interface IndexEntry {
   location: string
   room: string
   notes: string
+  timestamp_start?: number | null
 }
 
 export default function Videos() {
@@ -138,7 +139,7 @@ export default function Videos() {
   }
 
   const addEditEntry = () => {
-    setEditBuffer(prev => [...prev, { object: '', location: '', room: '', notes: '' }])
+    setEditBuffer(prev => [...prev, { object: '', location: '', room: '', notes: '', timestamp_start: null }])
   }
 
   const removeEditEntry = (i: number) => {
@@ -283,7 +284,7 @@ export default function Videos() {
                                 <li key={i} className="index-entry">
                                   <span className="index-obj">{e.object}</span>
                                   <span className="index-loc">
-                                    {e.location}{e.room ? ` · ${e.room}` : ''}{e.notes ? ` · ${e.notes}` : ''}
+                                    {e.location}{e.room ? ` · ${e.room}` : ''}{e.notes ? ` · ${e.notes}` : ''}{e.timestamp_start != null ? ` · @${e.timestamp_start}s` : ''}
                                   </span>
                                 </li>
                               ))}
@@ -326,6 +327,17 @@ export default function Videos() {
                                 placeholder="Notes (colour, brand...)"
                                 value={e.notes}
                                 onChange={ev => updateEditEntry(i, 'notes', ev.target.value)}
+                              />
+                              <input
+                                className="index-input"
+                                type="number"
+                                placeholder="Timestamp (seconds)"
+                                value={e.timestamp_start ?? ''}
+                                onChange={ev => {
+                                  const val = ev.target.value === '' ? null : Number(ev.target.value)
+                                  setEditBuffer(prev => prev.map((entry, idx) => idx === i ? { ...entry, timestamp_start: val } : entry))
+                                }}
+                                style={{ maxWidth: '120px' }}
                               />
                               <button className="index-remove-btn" onClick={() => removeEditEntry(i)}>
                                 {String.fromCodePoint(0x1F5D1)}

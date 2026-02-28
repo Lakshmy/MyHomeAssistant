@@ -5,7 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL || "https://app-memory-backend.witt
 
 function Chat() {
   const navigate = useNavigate()
-  const [messages, setMessages] = useState<{role: 'user' | 'assistant', text: string, videoName?: string}[]>([])
+  const [messages, setMessages] = useState<{role: 'user' | 'assistant', text: string, videoName?: string, timestampStart?: number | null}[]>([])
   const [status, setStatus] = useState('Ready')
   const [isRecording, setIsRecording] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -85,8 +85,13 @@ function Chat() {
       
       const textResponse = data.answer || data.response
 
-      // Add assistant message (with optional video)
-      setMessages(prev => [...prev, { role: 'assistant', text: textResponse, videoName: data.video_name || undefined }])
+      // Add assistant message (with optional video and timestamp)
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        text: textResponse,
+        videoName: data.video_name || undefined,
+        timestampStart: data.timestamp_start ?? null,
+      }])
       setStatus('Ready')
 
       // Speak result
@@ -126,6 +131,12 @@ function Chat() {
                     className="chat-video"
                     controls
                     src={`${API_URL}/videos/${encodeURIComponent(msg.videoName)}/stream`}
+                    onLoadedMetadata={(e) => {
+                      if (msg.timestampStart != null && msg.timestampStart > 0) {
+                        const video = e.currentTarget;
+                        video.currentTime = msg.timestampStart;
+                      }
+                    }}
                   />
                 )}
             </div>

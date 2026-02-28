@@ -74,7 +74,7 @@ async def chat_with_audio(file: UploadFile = File(...)):
 
         # Build inventory context from all index blobs
         inventory_context = ""
-        vid_map: dict[int, str] = {}  # id -> blob name
+        vid_map: dict[int, dict] = {}  # id -> {video_name, timestamp_start}
         if blob_service_client:
             try:
                 container_client = blob_service_client.get_container_client(container_name)
@@ -90,12 +90,17 @@ async def chat_with_audio(file: UploadFile = File(...)):
                             display = match.group(1) if match else video_name
                             for entry in data:
                                 notes = f": {entry.get('notes')}" if entry.get('notes') else ""
+                                ts = entry.get('timestamp_start')
+                                ts_label = f" @{ts}s" if ts is not None else ""
                                 all_entries.append(
                                     f"[VID:{vid_id}] {entry.get('object','?')} "
                                     f"→ {entry.get('location','?')} ({entry.get('room','?')})"
-                                    f" [from: {display}]{notes}"
+                                    f" [from: {display}]{notes}{ts_label}"
                                 )
-                                vid_map[vid_id] = video_name
+                                vid_map[vid_id] = {
+                                    "video_name": video_name,
+                                    "timestamp_start": ts,
+                                }
                                 vid_id += 1
                         except Exception as ie:
                             print(f"Failed to read index {blob.name}: {ie}")
@@ -118,12 +123,14 @@ async def chat_with_audio(file: UploadFile = File(...)):
                 "You are a home inventory assistant. The user will ask a question via audio.\n"
                 "RULE 1 — If the question asks where a specific item or object is located:\n"
                 "  - Search the INVENTORY INDEX above.\n"
-                "  - If found: state its exact location and room.\n"
+                "  - If found: state its exact location and room in the \"answer\" field. Do NOT include VID numbers, timestamps, or any index metadata in the answer text.\n"
                 "  - If NOT found: reply exactly \"Sorry, I could not find [item] in the videos.\"\n"
                 "RULE 2 — If the question is NOT about finding an item in the home:\n"
                 "  - Reply exactly \"Sorry, I don't know the answer to that.\"\n"
-                "Return ONLY a JSON object: {\"transcription\": \"...\", \"answer\": \"...\"}\n"
-                "No markdown, no extra text."
+                "If an item was found, return: {\"transcription\": \"...\", \"answer\": \"...\", \"video_id\": <VID number as integer>}\n"
+                "The \"video_id\" must be the [VID:N] number from the matching index entry. It goes ONLY in the video_id field, NEVER in the answer text.\n"
+                "If not found or not an item question, return: {\"transcription\": \"...\", \"answer\": \"...\"}\n"
+                "Return ONLY a JSON object. No markdown, no extra text."
             )
         else:
             prompt = (
@@ -151,16 +158,19 @@ async def chat_with_audio(file: UploadFile = File(...)):
         try:
             text_resp = response.text.replace('```json', '').replace('```', '').strip()
             parsed = json.loads(text_resp)
-            # Resolve video_id to blob name
+            # Resolve video_id to blob name and timestamp
             vid_id = parsed.pop('video_id', None)
             if vid_id is not None and isinstance(vid_id, int) and vid_id in vid_map:
-                parsed['video_name'] = vid_map[vid_id]
-                print(f"Matched video: {vid_map[vid_id]}")
+                matched = vid_map[vid_id]
+                parsed['video_name'] = matched["video_name"]
+                parsed['timestamp_start'] = matched["timestamp_start"]
+                print(f"Matched video: {matched['video_name']} @{matched['timestamp_start']}s")
             else:
                 parsed['video_name'] = None
+                parsed['timestamp_start'] = None
             return parsed
         except:
-            return {"transcription": "(Could not parse transcription)", "answer": response.text, "video_name": None}
+            return {"transcription": "(Could not parse transcription)", "answer": response.text, "video_name": None, "timestamp_start": None}
 
     except Exception as e:
         traceback.print_exc()
@@ -210,9 +220,10 @@ async def analyze_video(file: UploadFile = File(...)):
                     "Watch this home video carefully. Your job is to create an inventory index. "
                     "For every physical object you can clearly see, record: "
                     "object (item name), location (specific spot e.g. 'top shelf', 'left drawer'), "
-                    "room (which room), notes (color/brand/identifying detail if visible). "
+                    "room (which room), notes (color/brand/identifying detail if visible), "
+                    "timestamp_start (the approximate time in seconds when the object first appears in the video). "
                     "Return ONLY a JSON array, no markdown:\n"
-                    '[{"object":"...","location":"...","room":"...","notes":"..."}]'
+                    '[{"object":"...","location":"...","room":"...","notes":"...","timestamp_start":0}]'
                 )
 
                 response = client.models.generate_content(

@@ -10,6 +10,7 @@ interface IndexEntry {
   location: string
   room: string
   notes: string
+  timestamp_start?: number | null
 }
 
 export default function Record() {
