@@ -1,4 +1,4 @@
-# Memory Assistant PWA
+# FindIt
 
 A Progressive Web App (PWA) that helps elderly users locate household items using voice queries. Users upload walkthrough videos of their home; Google Gemini analyses the videos to build an inventory index of objects and locations. Users can then ask voice questions to find their belongings, and the app plays the relevant video clip alongside the answer.
 
@@ -8,7 +8,7 @@ A Progressive Web App (PWA) that helps elderly users locate household items usin
 
 ## Architecture
 
-![alt text](arch.png)
+![alt text](docs\arch.png)
 
 ## Technical Details
 
@@ -71,106 +71,75 @@ A Progressive Web App (PWA) that helps elderly users locate household items usin
 
 ---
 
-## Deployment
+## Configuration
 
-### Azure (Production)
+These settings are required for both local development and Azure deployment.
 
-Three PowerShell scripts are provided:
+### Google Gemini API Key
 
-| Script | Purpose |
-|---|---|
-| `deploy.ps1` | Full deploy — builds and deploys both frontend and backend |
-| `deploy_frontend.ps1` | Frontend only |
-| `deploy_backend.ps1` | Backend only |
+1. Get your API key from [Google AI Studio](https://aistudio.google.com/).
 
-```powershell
-# Full deploy
-./deploy.ps1
+> **Note**: The free tier of the Gemini API has a limit of ~20 requests/day. Enable billing in Google AI Studio for production use.
 
-# Frontend only (e.g. after UI changes)
-./deploy_frontend.ps1
+### Azure Storage Access
 
-# Backend only (e.g. after API changes)
-./deploy_backend.ps1
-```
+The backend uses **passwordless auth** (no connection strings). It auto-detects the environment:
 
-**Prerequisites**: Azure CLI logged in (`az login`) with access to `<your-resource-group>`.
+| Environment | Credential | How it works |
+|---|---|---|
+| Azure Container Apps | `ManagedIdentityCredential` | Backend's System-Assigned Managed Identity — automatic, no config needed |
+| Local development | `AzureCliCredential` | Uses your `az login` session |
 
-### Local Development
+Both environments require the **Storage Blob Data Contributor** RBAC role on the storage account. Ensure `publicNetworkAccess` is **Enabled** on the storage account.
 
-#### Prerequisites
+---
+
+## Local Development
+
+Follow these steps to run the app on your machine for testing or development.
+
+### Prerequisites
 
 | Requirement | Purpose |
 |---|---|
 | **Python 3.11+** | Backend runtime |
 | **Node.js 18+** | Frontend dev server (Vite) |
 | **Azure CLI** | Auth to Azure Blob Storage via `az login` |
-| **Google Gemini API Key** | AI transcription and inventory extraction |
-| **Storage Blob Data Contributor** role | Your `az login` user must have this RBAC role on the storage account |
+| **Google Gemini API Key** | AI transcription and inventory extraction (see [Configuration](#google-gemini-api-key)) |
 
-#### Quick Start
+### Step 1 — Configure Environment
 
-```powershell
-.\start_local.ps1
-```
-
-This opens two terminal windows:
-- **Backend** → http://localhost:8000 (FastAPI + uvicorn)
-- **Frontend** → http://localhost:5173 (Vite dev server)
-
-> **Note**: The backend takes ~30 seconds to start while it fetches an Azure credential token. Wait for `Uvicorn running on http://0.0.0.0:8000` in the backend terminal before using the app.
-
-#### Manual Start (alternative)
+Copy the template and fill in your values:
 
 ```powershell
-# Terminal 1 — Backend
-cd server
-pip install -r requirements.txt    # First time only
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
-
-# Terminal 2 — Frontend
-cd client
-npm install                         # First time only
-npx vite --host
+copy server\.env.example server\.env
 ```
 
-#### Local Configuration
-
-**`server/.env`** — Backend environment variables (gitignored):
+Edit `server\.env`:
 
 ```env
 GOOGLE_API_KEY=<your-gemini-api-key>
 AZURE_STORAGE_ACCOUNT_URL=https://<your-storage-account>.blob.core.windows.net
 ```
 
-You can retrieve these values from the deployed Azure app:
-```powershell
-# Google API Key
-az containerapp show --name <your-backend-app> --resource-group <your-resource-group> `
-  --query "properties.template.containers[0].env[?name=='GOOGLE_API_KEY'].value" -o tsv
+> If you already have an Azure deployment, you can retrieve these values:
+> ```powershell
+> az containerapp show --name <your-backend-app> --resource-group <your-resource-group> `
+>   --query "properties.template.containers[0].env[?name=='GOOGLE_API_KEY'].value" -o tsv
+>
+> az containerapp show --name <your-backend-app> --resource-group <your-resource-group> `
+>   --query "properties.template.containers[0].env[?name=='AZURE_STORAGE_ACCOUNT_URL'].value" -o tsv
+> ```
 
-# Storage Account URL
-az containerapp show --name <your-backend-app> --resource-group <your-resource-group> `
-  --query "properties.template.containers[0].env[?name=='AZURE_STORAGE_ACCOUNT_URL'].value" -o tsv
-```
+The frontend is pre-configured — `client\.env.local` points to `http://localhost:8000`. When absent, the frontend falls back to the Azure backend URL hardcoded in the source.
 
-**`client/.env.local`** — Frontend API target (gitignored):
+### Step 2 — Grant Storage Access
 
-```env
-VITE_API_URL=http://localhost:8000
-```
-
-> When this file is absent, the frontend falls back to the Azure backend URL hardcoded in the source.
-
-#### Azure Storage Access (Local)
-
-The backend auto-detects the environment:
-- **Azure Container Apps** → uses `ManagedIdentityCredential` (System-Assigned Managed Identity)
-- **Local development** → uses `AzureCliCredential` (requires `az login`)
-
-Your `az login` user needs the **Storage Blob Data Contributor** role on the storage account:
+Log in to Azure and assign the required RBAC role to your user:
 
 ```powershell
+az login
+
 # Get your user's Object ID
 $userId = az ad signed-in-user show --query id -o tsv
 
@@ -185,40 +154,147 @@ az role assignment create --assignee $userId `
 
 > RBAC propagation can take up to 5 minutes. Restart the backend after assigning the role.
 
+### Step 3 — Start the App
+
+```powershell
+.\scripts\start_local.ps1
+```
+
+The script will:
+1. Check prerequisites (Python, Node.js, Azure CLI login, `.env` file)
+2. Install dependencies if needed (`npm install`, `pip install`)
+3. Open two terminal windows — backend and frontend
+4. Wait until both servers are listening
+
+Once ready:
+- **Backend** → http://localhost:8000
+- **Frontend** → http://localhost:5173
+
+> **Note**: The backend takes ~30 seconds to start while it fetches an Azure credential token. Wait for `Uvicorn running on http://0.0.0.0:8000` in the backend terminal.
+
+### Stopping the App
+
+```powershell
+.\scripts\stop_local.ps1
+```
+
+### Manual Start (alternative)
+
+If you prefer to start the servers yourself instead of using the script:
+
+```powershell
+# Terminal 1 — Backend
+cd server
+pip install -r requirements.txt    # First time only
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+# Terminal 2 — Frontend
+cd client
+npm install                         # First time only
+npx vite --host
+```
+
 ---
 
-## Configuration
+## Azure Deployment (Production)
 
-### Google Gemini API Key
+Follow these steps to deploy the app to Azure Container Apps.
 
-1. Get your API key from [Google AI Studio](https://aistudio.google.com/).
-2. **Azure** — set it on the backend Container App:
+### Prerequisites
+
+- Azure CLI logged in (`az login`)
+- Google Gemini API Key (see [Configuration](#google-gemini-api-key))
+- No local Docker required — builds run in Azure Container Registry (cloud build)
+
+### Step 1 — Provision Infrastructure (first time only)
+
+This creates the resource group, storage account, container registry, container apps, managed identity, and RBAC roles:
+
+```powershell
+.\scripts\deploy_infra.ps1
+```
+
+The script deploys the Bicep template (`infra/main.bicep`) and saves the generated resource names to `scripts/deploy_config.generated.ps1` (gitignored). You only need to run this once.
+
+### Step 2 — Deploy the App
+
+```powershell
+# Full deploy (frontend + backend)
+.\scripts\deploy.ps1
+```
+
+Or deploy individually after making changes:
+
+```powershell
+.\scripts\deploy_backend.ps1    # After API/backend changes
+.\scripts\deploy_frontend.ps1   # After UI/frontend changes
+```
+
+The deploy scripts will:
+1. Verify Azure CLI login and load resource names from the generated config
+2. Build container images in ACR (cloud build — no local Docker needed)
+3. Update the Container Apps with the new images
+4. Print the live URLs when complete
+
+### Step 3 — Set the Gemini API Key
+
+On first deployment, set the API key on the backend:
 
 ```powershell
 az containerapp update `
-  --name <your-backend-app> `
-  --resource-group <your-resource-group> `
-  --set-env-vars GOOGLE_API_KEY=YOUR_KEY_HERE
+  --name app-memory-backend `
+  --resource-group rg-memory-assistant `
+  --set-env-vars GOOGLE_API_KEY=<your-gemini-api-key>
 ```
 
-3. **Local** — add it to `server/.env`:
+### Teardown
 
-```env
-GOOGLE_API_KEY=YOUR_KEY_HERE
+To delete the Azure deployment:
+
+```powershell
+.\scripts\teardown_azure.ps1
 ```
 
-> **Note**: The free tier of the Gemini API has a limit of ~20 requests/day. Enable billing in Google AI Studio for production use.
+You'll be prompted to choose:
+1. **Delete Container Apps only** — removes the running apps but keeps your storage account, container registry, and all uploaded videos/data
+2. **Delete entire resource group** — permanently removes **everything** (apps, storage, registry, all data). Requires typing the resource group name to confirm
 
-### Azure Storage Access
+---
 
-The backend uses **passwordless auth** — no connection strings required.
+## Scripts Overview
 
-| Environment | Credential | Setup |
-|---|---|---|
-| Azure Container Apps | `ManagedIdentityCredential` | Backend's System-Assigned identity needs **Storage Blob Data Contributor** role |
-| Local development | `AzureCliCredential` | Your `az login` user needs **Storage Blob Data Contributor** role |
+All operations are available through the interactive launcher:
 
-Ensure `publicNetworkAccess` is **Enabled** on the storage account.
+```powershell
+.\run.ps1
+```
+
+```
+========================================
+   FindIt - Launcher
+========================================
+
+  1) Provision Azure infrastructure (first time)
+  2) Start local servers
+  3) Stop local servers
+  4) Deploy to Azure (full)
+  5) Deploy backend only (Azure)
+  6) Deploy frontend only (Azure)
+  7) Teardown Azure deployment
+  0) Exit
+```
+
+| Script | Purpose |
+|---|---|
+| `run.ps1` | **Interactive launcher** — menu for all operations |
+| `scripts/start_local.ps1` | Start local dev servers with prerequisite checks |
+| `scripts/stop_local.ps1` | Stop locally running servers |
+| `scripts/deploy_infra.ps1` | Provision Azure infrastructure (resource group, ACR, storage, apps) |
+| `scripts/deploy.ps1` | Deploy both frontend and backend to Azure |
+| `scripts/deploy_backend.ps1` | Deploy backend only to Azure |
+| `scripts/deploy_frontend.ps1` | Deploy frontend only to Azure |
+| `scripts/deploy_config.ps1` | Shared Azure config (sourced automatically by deploy scripts) |
+| `scripts/teardown_azure.ps1` | Delete Azure deployment (Container Apps only or full resource group) |
 
 ---
 

@@ -62,7 +62,7 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"message": "Memory Assistant API is running"}
+    return {"message": "FindIt API is running"}
 
 @app.post("/chat-audio")
 async def chat_with_audio(file: UploadFile = File(...)):

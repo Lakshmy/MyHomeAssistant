@@ -14,9 +14,9 @@ export default defineConfig({
         clientsClaim: true,
       },
       manifest: {
-        name: 'Memory Assistant',
-        short_name: 'MemoryAid',
-        description: 'Personal memory aid for locating household items.',
+        name: 'FindIt',
+        short_name: 'FindIt',
+        description: 'Helps you find where things are kept at home.',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',

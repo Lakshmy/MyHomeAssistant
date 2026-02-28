@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://app-memory-backend.wittywater-f3319d1c.eastus.azurecontainerapps.io'
+const API_URL = import.meta.env.VITE_API_URL || 'https://app-memory-backend.purplebeach-2b0b36ce.eastus.azurecontainerapps.io'
 
 type Stage = 'idle' | 'selected' | 'uploading' | 'analyzing' | 'done' | 'error'
 

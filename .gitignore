@@ -42,6 +42,7 @@ pnpm-debug.log*
 # ──────────────────────────────────────────────
 .azure/
 *.bicepparam.local
+scripts/deploy_config.generated.ps1
 
 # ──────────────────────────────────────────────
 # Editors & OS

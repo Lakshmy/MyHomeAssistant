@@ -1,4 +1,4 @@
-# Troubleshooting Guide — Memory Assistant PWA
+# Troubleshooting Guide — FindIt
 
 A record of real issues encountered during development and how each was diagnosed and fixed.
 

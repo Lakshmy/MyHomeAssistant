@@ -21,7 +21,7 @@ function Home() {
     <div className="container">
       <header>
         <div className="header-row">
-          <h1>Memory Assistant</h1>
+          <h1>FindIt</h1>
           <div className="admin-toggle-row">
             <span className="admin-toggle-label">Admin</span>
             <button
