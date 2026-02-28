@@ -10,10 +10,12 @@ import tempfile
 import shutil
 import traceback
 import uuid
+from dotenv import load_dotenv
+load_dotenv()
 from google import genai
 from google.genai import types
 from azure.storage.blob import BlobServiceClient, ContentSettings
-from azure.identity import ManagedIdentityCredential
+from azure.identity import AzureCliCredential, ManagedIdentityCredential
 
 # Configure Gemini
 api_key = os.environ.get("GOOGLE_API_KEY")
@@ -21,14 +23,21 @@ client = None
 if api_key:
     client = genai.Client(api_key=api_key)
 
-# Configure Azure Blob Storage using Managed Identity (no connection string needed)
+# Configure Azure Blob Storage
+# Use ManagedIdentityCredential in Azure, AzureCliCredential for local development (uses az login).
 blob_service_client = None
 container_name = "user-videos"
 storage_account_url = os.environ.get("AZURE_STORAGE_ACCOUNT_URL")
 
 if storage_account_url:
     try:
-        credential = ManagedIdentityCredential()
+        is_azure = os.environ.get("CONTAINER_APP_NAME") or os.environ.get("WEBSITE_SITE_NAME")
+        if is_azure:
+            credential = ManagedIdentityCredential()
+            print("Using ManagedIdentityCredential (Azure)")
+        else:
+            credential = AzureCliCredential()
+            print("Using AzureCliCredential (local dev — requires 'az login')")
         blob_service_client = BlobServiceClient(account_url=storage_account_url, credential=credential)
         # Ensure container exists
         container_client = blob_service_client.get_container_client(container_name)
@@ -111,8 +120,11 @@ async def chat_with_audio(file: UploadFile = File(...)):
                         + "\n\n"
                     )
                     print(f"Loaded {len(all_entries)} inventory entries for context")
+                else:
+                    print("WARNING: No inventory entries found in any index blobs")
             except Exception as ce:
                 print(f"Failed to load inventory context: {ce}")
+                traceback.print_exc()
 
         model_name = "gemini-flash-lite-latest"
         print(f"Sending audio to model: {model_name}")
