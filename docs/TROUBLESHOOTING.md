@@ -191,6 +191,160 @@ Moved the chat button into a `.chat-controls` flex footer div instead of `positi
 
 ---
 
+## 7. Local Development — Setup & Common Issues
+
+### Prerequisites
+
+1. **Azure CLI** — logged in with `az login`
+2. **Python 3.11+** with packages: `pip install -r server/requirements.txt`
+3. **Node.js** — for the Vite frontend dev server
+4. **RBAC role** — your `az login` user needs **Storage Blob Data Contributor** on the storage account (see issue 7b below)
+
+### Starting locally
+
+Run from the project root:
+```powershell
+.\start_local.ps1
+```
+This opens two terminal windows (backend on `:8000`, frontend on `:5173`). The backend takes ~30 seconds to start while it fetches an Azure credential token.
+
+Alternatively, start each manually in separate terminals:
+```powershell
+# Terminal 1 — Backend
+cd server
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+# Terminal 2 — Frontend
+cd client
+npx vite --host
+```
+
+Then open **http://localhost:5173** in your browser.
+
+### How credential selection works
+
+The backend (`server/main.py`) auto-detects the environment:
+- **Azure** (Container Apps): Uses `ManagedIdentityCredential` — detected via `CONTAINER_APP_NAME` or `WEBSITE_SITE_NAME` env vars
+- **Local**: Uses `AzureCliCredential` — requires a valid `az login` session
+
+---
+
+### 7a. Backend not starting — `ImportError: cannot import name 'genai'`
+
+**Symptom**  
+Running `python -m uvicorn main:app` fails with:
+```
+ImportError: cannot import name 'genai' from 'google'
+```
+
+**Root Cause**  
+The `google-genai` package is not installed locally.
+
+**Fix**  
+```powershell
+cd server
+pip install -r requirements.txt
+```
+
+---
+
+### 7b. "Failed to fetch" / `AuthorizationPermissionMismatch` on local
+
+**Symptom**  
+Clicking "My Videos" shows `Failed to fetch`. The backend returns `500 Internal Server Error` with:
+```
+ErrorCode:AuthorizationPermissionMismatch
+This request is not authorized to perform this operation using this permission.
+```
+
+**Root Cause**  
+In Azure, the backend's **Managed Identity** has the `Storage Blob Data Contributor` role. Locally, `AzureCliCredential` uses your personal `az login` account, which does **not** have that role by default.
+
+**Fix**  
+Assign the role to your user:
+```powershell
+# Get your user's Object ID
+$userId = az ad signed-in-user show --query id -o tsv
+
+# Get the storage account resource ID
+$storageId = az storage account show --name stmemjz2jh --resource-group rg-memory-assistant --query id -o tsv
+
+# Assign Storage Blob Data Contributor
+az role assignment create --assignee $userId --role "Storage Blob Data Contributor" --scope $storageId
+```
+
+> **Note**: RBAC propagation can take up to 5 minutes. Restart the backend after the role is assigned.
+
+---
+
+### 7c. `DefaultAzureCredential` fails locally
+
+**Symptom**  
+Backend startup shows:
+```
+DefaultAzureCredential failed to retrieve a token from the included credentials.
+ManagedIdentityCredential: [Errno 13] Permission denied
+```
+
+**Root Cause**  
+`DefaultAzureCredential` tries multiple credential sources in order. On some Windows machines, the `ManagedIdentityCredential` step fails with a permission error on the Azure Arc agent token file, and other credential sources may also fail.
+
+**Fix**  
+The backend now uses `AzureCliCredential` directly for local development (instead of `DefaultAzureCredential`), which avoids this issue. Ensure you have a valid `az login` session:
+```powershell
+az login
+az account show  # Verify you're logged in
+```
+
+---
+
+### 7d. `.env` file not loaded — `GOOGLE_API_KEY` or `AZURE_STORAGE_ACCOUNT_URL` is None
+
+**Symptom**  
+Backend starts but Gemini calls fail or blob storage is not configured. Logs show:
+```
+GOOGLE_API_KEY not configured on server
+```
+
+**Root Cause**  
+The `server/.env` file is missing or has placeholder values.
+
+**Fix**  
+Ensure `server/.env` contains real values:
+```env
+GOOGLE_API_KEY=<your-gemini-api-key>
+AZURE_STORAGE_ACCOUNT_URL=https://<your-storage-account>.blob.core.windows.net
+```
+
+You can retrieve these from the deployed Azure app:
+```powershell
+az containerapp show --name app-memory-backend --resource-group rg-memory-assistant `
+  --query "properties.template.containers[0].env[?name=='GOOGLE_API_KEY'].value" -o tsv
+
+az containerapp show --name app-memory-backend --resource-group rg-memory-assistant `
+  --query "properties.template.containers[0].env[?name=='AZURE_STORAGE_ACCOUNT_URL'].value" -o tsv
+```
+
+---
+
+### 7e. Backend takes 30+ seconds to start
+
+**Symptom**  
+After running `start_local.ps1`, opening `http://localhost:5173` and clicking "My Videos" or "Ask Question" shows `Failed to fetch` for the first ~30 seconds.
+
+**Root Cause**  
+`AzureCliCredential` fetches an OAuth token from Azure AD at startup, which can take 20–30 seconds on the first call.
+
+**Fix**  
+This is expected. Wait for the backend terminal window to show:
+```
+Azure Blob Storage ready: https://...
+INFO:     Uvicorn running on http://0.0.0.0:8000
+```
+before using the app.
+
+---
+
 ## General Diagnostics
 
 ### Check backend live logs
@@ -206,11 +360,24 @@ az containerapp show --name <your-frontend-app> --resource-group <your-resource-
 
 ### Test backend endpoints directly
 ```powershell
-# Health check
+# Health check (Azure)
 curl https://<your-backend-url>.azurecontainerapps.io/
 
-# List videos
+# Health check (local)
+curl http://localhost:8000/
+
+# List videos (Azure)
 curl https://<your-backend-url>.azurecontainerapps.io/videos
+
+# List videos (local)
+curl http://localhost:8000/videos
+```
+
+### Check local servers are running
+```powershell
+# Check if ports are listening
+Get-NetTCPConnection -LocalPort 8000 -State Listen   # Backend
+Get-NetTCPConnection -LocalPort 5173 -State Listen   # Frontend
 ```
 
 ### Force browser to reload after deploy
