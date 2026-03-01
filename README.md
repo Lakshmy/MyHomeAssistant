@@ -34,7 +34,7 @@ A Progressive Web App (PWA) that helps elderly users locate household items usin
 | Component | Technology | Purpose |
 |---|---|---|
 | API Framework | FastAPI (Python 3.11) | REST API, async request handling |
-| AI | Google Gemini (`gemini-flash-lite-latest`) | Audio transcription + inventory Q&A; video item extraction |
+| AI | Google Gemini (`gemini-3-flash-preview`) | Audio transcription + inventory Q&A; video item extraction |
 | Storage SDK | `azure-storage-blob` | Upload, list, stream, delete blobs |
 | Auth | `azure-identity` — `ManagedIdentityCredential` / `AzureCliCredential` | Passwordless auth to Azure Storage (Managed Identity in Azure, `az login` locally) |
 | RBAC Role | Storage Blob Data Contributor | Grants backend read/write on the blob container |
@@ -275,11 +275,11 @@ All operations are available through the interactive launcher:
 ========================================
 
   1) Provision Azure infrastructure (first time)
-  2) Start local servers
-  3) Stop local servers
-  4) Deploy to Azure (full)
-  5) Deploy backend only (Azure)
-  6) Deploy frontend only (Azure)
+  2) Deploy to Azure (full)
+  3) Deploy backend only (Azure)
+  4) Deploy frontend only (Azure)
+  5) Start local servers
+  6) Stop local servers
   7) Teardown Azure deployment
   0) Exit
 ```
