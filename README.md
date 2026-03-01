@@ -307,3 +307,33 @@ All operations are available through the interactive launcher:
 5. Tap **Ask Question** — allow microphone access, then tap **Tap to Speak**.
 6. Ask where something is (e.g. *"Where are my glasses?"*).
 7. Tap **Stop & Send** — the app responds with the location and plays the relevant video clip.
+
+---
+
+## Limitations
+
+Please be aware of the following constraints before using or deploying FindIt:
+
+### Functional
+
+- **Item queries only** — The app answers questions about items found in your uploaded videos. It does not handle general-purpose or out-of-context questions.
+- **Static locations assumed** — Items are indexed at the time of video upload. The app does not track movement of items after recording.
+- **English only** — All voice prompts, AI analysis, and responses are in English.
+
+### Privacy & Multi-tenancy
+
+- **Single tenant** — There is no user authentication or data isolation. All users with access to the app can see all uploaded videos and query all inventories.
+- **No access control** — Any user can upload, delete, and edit videos and their inventory data. Enable Admin Mode with a single toggle.
+
+### Cost & Quotas
+
+- **Azure resource charges** — Running the app incurs costs for Azure Container Apps, Container Registry, Blob Storage, and Log Analytics. Review [Azure pricing](https://azure.microsoft.com/pricing/) before deploying.
+- **Gemini API usage charges** — Each voice query and video analysis calls the Google Gemini API. The free tier is limited to ~20 requests/day; enable billing in Google AI Studio for production use.
+- **No file size limits enforced** — The app accepts arbitrarily large video uploads, which can increase storage costs quickly.
+
+### Technical
+
+- **Modern browser required** — Voice recording needs the MediaRecorder API and microphone access. Text-to-speech needs the Web Speech API. Both require a modern browser (Chrome, Edge, Firefox) and HTTPS.
+- **Internet required** — The PWA caches static assets for offline use, but all voice queries, video uploads, and playback require an active connection to the backend and Azure Storage.
+- **Cold start latency** — The Azure deployment scales to zero when idle. The first request after an idle period may take 30+ seconds while the container starts up.
+- **Single region** — Infrastructure is deployed to a single Azure region (East US) with locally redundant storage. There is no geo-replication or disaster recovery.
