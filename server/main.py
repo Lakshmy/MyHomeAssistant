@@ -126,30 +126,42 @@ async def chat_with_audio(file: UploadFile = File(...)):
                 print(f"Failed to load inventory context: {ce}")
                 traceback.print_exc()
 
-        model_name = "gemini-flash-lite-latest"
+        # To switch models, comment/uncomment one of the lines below:
+        # model_name = "gemini-flash-lite-latest"  # smaller/faster/free tier
+        model_name = "gemini-3-flash-preview"      # larger/more accurate
         print(f"Sending audio to model: {model_name}")
 
         if inventory_context:
             prompt = (
                 f"{inventory_context}"
-                "You are a home inventory assistant. The user will ask a question via audio.\n"
-                "RULE 1 — If the question asks where a specific item or object is located:\n"
-                "  - Search the INVENTORY INDEX above.\n"
-                "  - If found: state its exact location and room in the \"answer\" field. Do NOT include VID numbers, timestamps, or any index metadata in the answer text.\n"
-                "  - If NOT found: reply exactly \"Sorry, I could not find [item] in the videos.\"\n"
-                "RULE 2 — If the question is NOT about finding an item in the home:\n"
-                "  - Reply exactly \"Sorry, I don't know the answer to that.\"\n"
-                "If an item was found, return: {\"transcription\": \"...\", \"answer\": \"...\", \"video_id\": <VID number as integer>}\n"
-                "The \"video_id\" must be the [VID:N] number from the matching index entry. It goes ONLY in the video_id field, NEVER in the answer text.\n"
-                "If not found or not an item question, return: {\"transcription\": \"...\", \"answer\": \"...\"}\n"
-                "Return ONLY a JSON object. No markdown, no extra text."
+                "You are FindIt, a kind and patient assistant who helps people remember where their belongings are kept at home.\n"
+                "The user will ask a question via audio. They may be elderly or have memory difficulties, so respond warmly and clearly.\n\n"
+                "RULES:\n"
+                "1. ITEM LOCATION QUESTIONS — If the user asks where something is:\n"
+                "   - Search the INVENTORY INDEX above for matching items.\n"
+                "   - Use flexible matching: treat synonyms as matches (e.g. 'pills'='medicine', 'specs'='glasses', 'remote'='TV remote').\n"
+                "   - If found: describe the exact location and room in simple, reassuring language.\n"
+                "     Do NOT include VID numbers, timestamps, or any index metadata in the answer text.\n"
+                "   - If multiple matches exist, mention all locations so the user can check each spot.\n"
+                "   - If NOT found: reply warmly, e.g. \"I'm sorry, I couldn't find [item] in the videos we have. "
+                "It might help to record a new video of that area.\"\n"
+                "2. NON-ITEM QUESTIONS — If the question is unrelated to finding items at home:\n"
+                "   - Reply kindly: \"I'm sorry, I can only help you find things around your home. Could you ask me where something is?\"\n\n"
+                "OUTPUT FORMAT (strict JSON, no markdown, no extra text):\n"
+                "- Item found:          {\"transcription\": \"...\", \"answer\": \"...\", \"video_id\": <VID number>}\n"
+                "- Item not found:      {\"transcription\": \"...\", \"answer\": \"...\"}\n"
+                "- Not an item question: {\"transcription\": \"...\", \"answer\": \"...\"}\n"
+                "The \"video_id\" must be the [VID:N] number from the matching inventory entry. Place it ONLY in the video_id field, NEVER in the answer text.\n"
+                "If multiple items match, use the video_id of the best match."
             )
         else:
             prompt = (
-                "You are a home inventory assistant. No inventory has been loaded yet.\n"
+                "You are FindIt, a kind and patient assistant who helps people remember where their belongings are kept at home.\n"
+                "No home inventory has been loaded yet — no videos have been recorded.\n"
                 "Listen to the audio question.\n"
-                "If the question is about finding an item: reply \"Sorry, I could not find [item] in the videos.\"\n"
-                "Otherwise: reply \"Sorry, I don't know the answer to that.\"\n"
+                "If the question is about finding an item: reply warmly that no videos have been recorded yet "
+                "and suggest recording a walkthrough video of their home.\n"
+                "If the question is unrelated: reply kindly that you can only help find things around the home.\n"
                 "Return ONLY a JSON object: {\"transcription\": \"...\", \"answer\": \"...\"}\n"
                 "No markdown, no extra text."
             )
@@ -229,17 +241,30 @@ async def analyze_video(file: UploadFile = File(...)):
                     video_bytes = f.read()
 
                 analysis_prompt = (
-                    "Watch this home video carefully. Your job is to create an inventory index. "
-                    "For every physical object you can clearly see, record: "
-                    "object (item name), location (specific spot e.g. 'top shelf', 'left drawer'), "
-                    "room (which room), notes (color/brand/identifying detail if visible), "
-                    "timestamp_start (the approximate time in seconds when the object first appears in the video). "
+                    "You are analyzing a home walkthrough video to build an inventory of household items.\n"
+                    "Focus on items people commonly need to find: keys, wallet, glasses, medications, remote controls, "
+                    "phone, chargers, documents, tools, kitchen utensils, clothing, bags, and other personal belongings.\n"
+                    "Skip structural elements (walls, floors, ceilings) and fixed fixtures unless they serve as useful landmarks.\n\n"
+                    "For each item, record:\n"
+                    "- object: clear, common name (e.g. 'reading glasses' not 'optical device')\n"
+                    "- location: specific spot described relative to landmarks "
+                    "(e.g. 'top shelf of the wooden bookcase', 'left side of kitchen counter near the window')\n"
+                    "- room: which room or area (e.g. 'kitchen', 'living room', 'master bedroom')\n"
+                    "- notes: distinguishing details — color, brand, size, or condition if visible\n"
+                    "- timestamp_start: approximate time in seconds when the item first appears in the video\n\n"
+                    "Guidelines:\n"
+                    "- Use simple, everyday language an elderly person would understand.\n"
+                    "- Describe locations relative to landmarks (near the TV, by the front door, next to the fridge).\n"
+                    "- If the same item appears in multiple spots, create a separate entry for each location.\n"
+                    "- Be thorough — it is better to list too many items than too few.\n\n"
                     "Return ONLY a JSON array, no markdown:\n"
                     '[{"object":"...","location":"...","room":"...","notes":"...","timestamp_start":0}]'
                 )
 
                 response = client.models.generate_content(
-                    model="gemini-flash-lite-latest",
+                    # To switch models, comment/uncomment one of the lines below:
+                    # model="gemini-flash-lite-latest",  # smaller/faster/free tier
+                    model="gemini-3-flash-preview",      # larger/more accurate
                     contents=[
                         types.Content(
                             role="user",

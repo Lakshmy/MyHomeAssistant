@@ -4,7 +4,7 @@ WORKDIR /app
 COPY client/package*.json ./
 RUN npm ci
 COPY client/ .
-ARG VITE_API_URL=https://app-memory-backend.purplebeach-2b0b36ce.eastus.azurecontainerapps.io
+ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 

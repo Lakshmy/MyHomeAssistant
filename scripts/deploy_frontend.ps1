@@ -11,10 +11,15 @@ Push-Location "$PSScriptRoot\.."
 
 Assert-AzureLogin
 
+# Dynamically resolve backend URL so frontend always points to the current backend
+$BackendFqdn = az containerapp show -n $BackendAppName -g $ResourceGroup --query "properties.configuration.ingress.fqdn" -o tsv 2>$null
+$BackendApiUrl = "https://$BackendFqdn"
+Write-Host "Frontend will use backend: $BackendApiUrl"
+
 # Frontend Build & Push (Using Azure Cloud Build - no local Docker required)
 Write-Host "--------------------------------"
 Write-Host "Building and Pushing Frontend Image to ACR..."
-az acr build --registry $AcrName --image "memory-frontend:latest" --file ./infra/client.Dockerfile . 2>$null
+az acr build --registry $AcrName --image "memory-frontend:latest" --file ./infra/client.Dockerfile --build-arg "VITE_API_URL=$BackendApiUrl" . 2>$null
 Assert-LastCommand "Frontend image build failed"
 
 Write-Host "Updating Frontend Container App..."
