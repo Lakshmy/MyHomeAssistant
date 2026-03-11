@@ -8,7 +8,7 @@ A Progressive Web App (PWA) that helps elderly users locate household items usin
 
 ## Architecture
 
-![alt text](docs\arch.png)
+![Architecture Diagram](docs/arch.png)
 
 ## Technical Details
 
